@@ -127,7 +127,7 @@ void HardwareRenderer::draw_point( Point& point ) {
 
 }
 
-void HardwareRenderer::draw_line( Line& line ) { 
+void HardwareRenderer::draw_line( Line& line ) {
 
   Vector2D p0 = transform(line.from);
   Vector2D p1 = transform(line.to);
@@ -152,7 +152,7 @@ void HardwareRenderer::draw_polyline( Polyline& polyline ) {
 void HardwareRenderer::draw_rect( Rect& rect ) {
 
   Color c;
-  
+
   // draw as two triangles
   float x = rect.position.x;
   float y = rect.position.y;
@@ -163,7 +163,7 @@ void HardwareRenderer::draw_rect( Rect& rect ) {
   Vector2D p1 = transform(Vector2D( x + w ,   y   ));
   Vector2D p2 = transform(Vector2D(   x   , y + h ));
   Vector2D p3 = transform(Vector2D( x + w , y + h ));
-  
+
   // draw fill
   c = rect.style.fillColor;
   if (c.a != 0 ) {
@@ -242,27 +242,41 @@ void HardwareRenderer::draw_group( Group& group ) {
 
 
 void HardwareRenderer::rasterize_point(float x, float y, Color color) {
-  
+
   // Task 1: 
   // Implement point rasterization
+  glColor4f(color.r,color.g,color.b,color.a);
+  glBegin(GL_POINTS);
+  glVertex2f(x,y);
+  glEnd();
 
 }
 
 void HardwareRenderer::rasterize_line(float x0, float y0,
-                                      float x1, float y1, 
+                                      float x1, float y1,
                                       Color color) {
 
   // Task 1: 
   // Implement line rasterization
+  glColor4f(color.r,color.g,color.b,color.a);
+  glBegin(GL_LINES);
+  glVertex2f(x0,y0);
+  glVertex2f(x1,y1);
+  glEnd();
 
 }
 
 void HardwareRenderer::rasterize_triangle(float x0, float y0,
-                                          float x1, float y1, 
-                                          float x2, float y2, 
+                                          float x1, float y1,
+                                          float x2, float y2,
                                           Color color) {
   // Task 1: 
   // Implement triangle rasterization
+  glColor4f(color.r,color.g,color.b,color.a);
+  glVertex2f(x0,y0);
+  glVertex2f(x1,y1);
+  glVertex2f(x2,y2);
+  glEnd();
 
 }
 
@@ -270,7 +284,7 @@ void HardwareRenderer::rasterize_image(float x0, float y0,
                                        float x1, float y1,
                                        Texture& tex) {
   glColor4f(1, 1, 1, 1);
-  
+
   size_t w = tex.mipmap[0].width;
   size_t h = tex.mipmap[0].height;
   unsigned char* texels = &tex.mipmap[0].texels[0];
@@ -283,13 +297,13 @@ void HardwareRenderer::rasterize_image(float x0, float y0,
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
-  
+  glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
   // create texture and mipmap
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h,
                               0, GL_RGBA, GL_UNSIGNED_BYTE, texels);
   glGenerateMipmap(GL_TEXTURE_2D);
-  
+
   // enable texture and draw
   glEnable(GL_TEXTURE_2D);
 
