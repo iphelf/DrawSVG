@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.18)
 project(drawsvg)
 
 # Add modules
@@ -73,7 +73,7 @@ if(LINUX)
   # GCC only
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 
-    set(GCC_CXX_FLAGS "-std=gnu++11 -m64")
+    set(GCC_CXX_FLAGS "-std=c++17 -m64")
 
     # X11 Dependencies
     if(NOT BUILD_LIBCMU462)

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.18)
 
 include_directories(${PROJECT_SOURCE_DIR}/include/CMU462)
 
