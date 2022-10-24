@@ -119,7 +119,7 @@ class SoftwareRendererImp : public SoftwareRenderer {
   // rasterize a line
   void rasterize_line(float x0, float y0,
                       float x1, float y1,
-                      Color color);
+                      const Color &color);
 
   void rasterize_line_DDA(float x0, float y0,
                           float x1, float y1,
@@ -137,7 +137,20 @@ class SoftwareRendererImp : public SoftwareRenderer {
   void rasterize_triangle(float x0, float y0,
                           float x1, float y1,
                           float x2, float y2,
-                          Color color);
+                          const Color &color);
+
+  void rasterize_triangle_with_horizontal_base(
+      float xTip, float yTip,
+      float xBase0, float xBase1, float yBase,
+      const Color &color
+  );
+
+  // area is on the right of hypotenuse vector (x1-x0, y1-y0)
+  void rasterize_orthogonal_triangle(
+      float x0, float y0,
+      float x1, float y1,
+      const Color &color
+  );
 
   // rasterize an image
   void rasterize_image(float x0, float y0,

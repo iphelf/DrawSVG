@@ -235,7 +235,7 @@ void SoftwareRendererImp::rasterize_point(float x, float y, Color color) {
 
 void SoftwareRendererImp::rasterize_line(float x0, float y0,
                                          float x1, float y1,
-                                         Color color) {
+                                         const Color &color) {
 
   // Task 2:
   // Implement line rasterization
@@ -357,10 +357,117 @@ void SoftwareRendererImp::rasterize_line_bresenham(
 void SoftwareRendererImp::rasterize_triangle(float x0, float y0,
                                              float x1, float y1,
                                              float x2, float y2,
-                                             Color color) {
+                                             const Color &color) {
   // Task 3: 
   // Implement triangle rasterization
 
+  // make sure (x0,y0) is the top
+  if (y1 > y0 && y1 > y2) {
+    swap(x0, x1);
+    swap(y0, y1);
+  } else if (y2 > y0 && y2 > y1) {
+    swap(x0, x2);
+    swap(y0, y2);
+  }
+
+  // make sure (x0,y0) is the only top
+  if (y0 == y1) {
+    rasterize_triangle_with_horizontal_base(x2, y2, x0, x1, y0, color);
+    return;
+  } else if (y0 == y2) {
+    rasterize_triangle_with_horizontal_base(x1, y1, x0, x2, y0, color);
+    return;
+  }
+
+  // make sure p0->p1->p2 is counter-clockwise
+  if ((x1 == x2 && (x1 < x0) == (y1 < y2)) || x1 > x2) {
+    swap(x1, x2);
+    swap(y1, y2);
+  }
+
+  // horizontally cut into two parts - upper and lower
+  if (y1 == y2) {
+    rasterize_triangle_with_horizontal_base(x0, y0, x1, x2, y1, color);
+  } else if (y1 < y2) {
+    float x = (x1 - x0) / (y1 - y0) * (y2 - y0) + x0;
+    rasterize_triangle_with_horizontal_base(x0, y0, x, x2, y2, color);
+    rasterize_triangle_with_horizontal_base(x1, y1, x, x2, y2, color);
+  } else {
+    float x = (x2 - x0) / (y2 - y0) * (y1 - y0) + x0;
+    rasterize_triangle_with_horizontal_base(x0, y0, x1, x, y1, color);
+    rasterize_triangle_with_horizontal_base(x2, y2, x1, x, y1, color);
+  }
+}
+
+void SoftwareRendererImp::rasterize_triangle_with_horizontal_base(
+    float xTip, float yTip,
+    float xBase0, float xBase1, float yBase,
+    const Color &color
+) {
+  if (xBase0 > xBase1)
+    swap(xBase0, xBase1);
+  // Brute force now:
+  float kl = (xBase0 - xTip) / (yBase - yTip);
+  float bl = xTip - kl * yTip;
+  float kr = (xBase1 - xTip) / (yBase - yTip);
+  float br = xTip - kr * yTip;
+  if (yBase > yTip) swap(yBase, yTip);
+  int y_from = max(0, i_floor(yBase + 0.5f));
+  int y_to = min(int(target_h) - 1, i_floor(yTip - 0.5f));
+  int x_from, x_to;
+  for (int sy = y_from, sx; sy <= y_to; ++sy) {
+    x_from = max(0, i_floor(kl * (0.5f + float(sy)) + bl + 0.5f));
+    x_to = min(int(target_w) - 1, i_floor(kr * (0.5f + float(sy)) + br - 0.5f));
+    for (sx = x_from; sx <= x_to; ++sx)
+      put_pixel(sx, sy, color);
+  }
+
+  // Finer categories:
+  /*
+  if (xBase0 < xTip && xTip < xBase1) { // Acute Triangle
+    if (yTip > yBase) {
+      rasterize_orthogonal_triangle(xBase0, yBase, xTip, yTip, color);
+      rasterize_orthogonal_triangle(xTip, yTip, xBase1, yBase, color);
+    } else {
+      rasterize_orthogonal_triangle(xTip, yTip, xBase0, yBase, color);
+      rasterize_orthogonal_triangle(xBase1, yBase, xTip, yTip, color);
+    }
+    return;
+  } else if (xBase0 == xTip) { // Right Triangle (corner at (x0,yBase))
+    if (yTip > yBase)
+      rasterize_orthogonal_triangle(xTip, yTip, xBase1, yBase, color);
+    else
+      rasterize_orthogonal_triangle(xBase1, yBase, xTip, yTip, color);
+    return;
+  } else if (xBase1 == xTip) { // Right Triangle (corner at (x1,yBase))
+    if (yTip > yBase)
+      rasterize_orthogonal_triangle(xBase0, yBase, xTip, yTip, color);
+    else
+      rasterize_orthogonal_triangle(xTip, yTip, xBase0, yBase, color);
+    return;
+  } else { // Obtuse Triangle
+    // TODO: handle the case of obtuse triangle
+    rasterize_line(xTip, yTip, xBase0, yBase, Color::Blue);
+    rasterize_line(xTip, yTip, xBase1, yBase, Color::Blue);
+    rasterize_line(xBase0, yBase, xBase1, yBase, Color::Blue);
+  }
+   */
+}
+
+// area is on the right of hypotenuse vector (x1-x0, y1-y0)
+void SoftwareRendererImp::rasterize_orthogonal_triangle(
+    float x0, float y0, float x1, float y1, const Color &color
+) {
+  rasterize_line(x0, y0, x1, y1, color);
+  if ((x1 > x0) == (y0 > y1)) { // (x0, y1) is the right angle
+    // TODO
+    rasterize_line(x0, y0, x0, y1, color);
+    rasterize_line(x1, y1, x0, y1, color);
+  } else { // (x1,y0) is the right angle
+    // TODO
+    rasterize_line(x0, y0, x1, y0, color);
+    rasterize_line(x1, y1, x1, y0, color);
+  }
 }
 
 void SoftwareRendererImp::rasterize_image(float x0, float y0,
