@@ -14,7 +14,7 @@ namespace CMU462 { // CMU462
 class SoftwareRenderer : public SVGRenderer {
  public:
 
-  SoftwareRenderer() : sample_rate(1) {}
+  SoftwareRenderer() : sample_rate(1), render_target(nullptr) {}
 
   // Free used resources
   virtual ~SoftwareRenderer() {}
@@ -68,7 +68,9 @@ class SoftwareRenderer : public SVGRenderer {
 class SoftwareRendererImp : public SoftwareRenderer {
  public:
 
-  SoftwareRendererImp() : SoftwareRenderer() {}
+  SoftwareRendererImp() : SoftwareRenderer() {
+    update_sample_buffer();
+  }
 
   // draw an svg input to render target
   void draw_svg(SVG &svg);
@@ -81,6 +83,12 @@ class SoftwareRendererImp : public SoftwareRenderer {
                          size_t width, size_t height);
 
  private:
+
+  // supersampling
+  std::vector<u_int8_t> sample_buffer;
+  size_t sample_w;
+  size_t sample_h;
+  void update_sample_buffer();
 
   // Primitive Drawing //
 
@@ -139,16 +147,10 @@ class SoftwareRendererImp : public SoftwareRenderer {
                           float x2, float y2,
                           const Color &color);
 
-  void rasterize_triangle_with_horizontal_base(
+  // rasterize a triangle with horizontal base
+  void rasterize_triangle(
       float xTip, float yTip,
       float xBase0, float xBase1, float yBase,
-      const Color &color
-  );
-
-  // area is on the right of hypotenuse vector (x1-x0, y1-y0)
-  void rasterize_orthogonal_triangle(
-      float x0, float y0,
-      float x1, float y1,
       const Color &color
   );
 
@@ -158,19 +160,23 @@ class SoftwareRendererImp : public SoftwareRenderer {
                        Texture &tex);
 
   // resolve samples to render target
-  void resolve(void);
+  void resolve();
 
   // helpers
   static inline int i_floor(float f) {
     return int(std::floor(f));
   }
 
-  inline bool valid_sx(int sx) {
-    return 0 <= sx && sx < target_w;
+  static inline int i_ceil(float f) {
+    return int(std::ceil(f));
   }
 
-  inline bool valid_sy(int sy) {
-    return 0 <= sy && sy < target_h;
+  [[nodiscard]] inline bool valid_sx(int sx) const {
+    return 0 <= sx && sx < sample_w;
+  }
+
+  [[nodiscard]] inline bool valid_sy(int sy) const {
+    return 0 <= sy && sy < sample_h;
   }
 
   inline bool overflow(int sx, int sy) {
@@ -178,12 +184,40 @@ class SoftwareRendererImp : public SoftwareRenderer {
   }
 
   // set pixel color
-  inline void put_pixel(int sx, int sy, const Color &color) {
+  inline void put_pixel(int sx, int sy, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     auto base = 4 * (sx + sy * target_w);
-    render_target[base] = static_cast<uint8_t>(color.r * 255);
-    render_target[base + 1] = static_cast<uint8_t>(color.g * 255);
-    render_target[base + 2] = static_cast<uint8_t>(color.b * 255);
-    render_target[base + 3] = static_cast<uint8_t>(color.a * 255);
+    render_target[base] = r;
+    render_target[base + 1] = g;
+    render_target[base + 2] = b;
+    render_target[base + 3] = a;
+  }
+
+  inline void put_pixel(int sx, int sy, const Color &color) {
+    put_pixel(
+        sx, sy,
+        static_cast<uint8_t>(color.r * 255),
+        static_cast<uint8_t>(color.g * 255),
+        static_cast<uint8_t>(color.b * 255),
+        static_cast<uint8_t>(color.a * 255)
+    );
+  }
+
+  inline void put_sample(int sx, int sy, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    auto base = 4 * (sx + sy * sample_w);
+    sample_buffer[base] = r;
+    sample_buffer[base + 1] = g;
+    sample_buffer[base + 2] = b;
+    sample_buffer[base + 3] = a;
+  }
+
+  inline void put_sample(int sx, int sy, const Color &color) {
+    put_sample(
+        sx, sy,
+        static_cast<uint8_t>(color.r * 255),
+        static_cast<uint8_t>(color.g * 255),
+        static_cast<uint8_t>(color.b * 255),
+        static_cast<uint8_t>(color.a * 255)
+    );
   }
 
   // determine axis to move along
@@ -205,17 +239,17 @@ class SoftwareRendererImp : public SoftwareRenderer {
     }
   }
 
-  inline std::pair<int, int> truncated_x_range(float x0, float x1) {
+  [[nodiscard]] inline std::pair<int, int> truncated_x_range(float x0, float x1) const {
     return {
         std::max(0, i_floor(x0)),
-        std::min(int(target_w) - 1, i_floor(x1))
+        std::min(int(sample_w) - 1, i_floor(x1))
     };
   }
 
-  inline std::pair<int, int> truncated_y_range(float y0, float y1) {
+  [[nodiscard]] inline std::pair<int, int> truncated_y_range(float y0, float y1) const {
     return {
         std::max(0, i_floor(y0)),
-        std::min(int(target_h) - 1, i_floor(y1))
+        std::min(int(sample_h) - 1, i_floor(y1))
     };
   }
 

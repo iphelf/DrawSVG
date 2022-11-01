@@ -7,6 +7,15 @@
 
 #include "triangulation.h"
 
+#include <cassert>
+#define ASSERT_ENABLED
+#ifdef ASSERT_ENABLED
+#define ASSERT(expr) assert(expr)
+#endif
+#ifndef ASSERT_ENABLED
+#define ASSERT(expr)
+#endif
+
 using namespace std;
 
 namespace CMU462 {
@@ -53,6 +62,7 @@ void SoftwareRendererImp::set_sample_rate(size_t sample_rate) {
   // Task 4: 
   // You may want to modify this for supersampling support
   this->sample_rate = sample_rate;
+  update_sample_buffer();
 
 }
 
@@ -64,7 +74,15 @@ void SoftwareRendererImp::set_render_target(unsigned char *render_target,
   this->render_target = render_target;
   this->target_w = width;
   this->target_h = height;
+  update_sample_buffer();
 
+}
+
+void SoftwareRendererImp::update_sample_buffer() {
+  if (!this->render_target) return;
+  this->sample_h = this->target_h * this->sample_rate;
+  this->sample_w = this->target_w * this->sample_rate;
+  this->sample_buffer.assign(this->sample_h * this->sample_w * 4, 0);
 }
 
 void SoftwareRendererImp::draw_element(SVGElement *element) {
@@ -221,6 +239,8 @@ void SoftwareRendererImp::draw_group(Group &group) {
 
 void SoftwareRendererImp::rasterize_point(float x, float y, Color color) {
 
+  x *= float(sample_rate);
+  y *= float(sample_rate);
   // fill in the nearest pixel
   int sx = (int) floor(x);
   int sy = (int) floor(y);
@@ -229,7 +249,7 @@ void SoftwareRendererImp::rasterize_point(float x, float y, Color color) {
   if (overflow(sx, sy)) return;
 
   // fill sample - NOT doing alpha blending!
-  put_pixel(sx, sy, color);
+  put_sample(sx, sy, color);
 
 }
 
@@ -239,6 +259,10 @@ void SoftwareRendererImp::rasterize_line(float x0, float y0,
 
   // Task 2:
   // Implement line rasterization
+  x0 *= float(sample_rate);
+  y0 *= float(sample_rate);
+  x1 *= float(sample_rate);
+  y1 *= float(sample_rate);
 //  rasterize_line_DDA(x0, y0, x1, y1, color);
 //  rasterize_line_midpoint(x0, y0, x1, y1, color);
   rasterize_line_bresenham(x0, y0, x1, y1, color);
@@ -255,7 +279,7 @@ void SoftwareRendererImp::rasterize_line_DDA(
          sx <= to; y += k, ++sx) {
       sy = int(floor(y));
       if (!valid_sy(sy)) continue;
-      put_pixel(sx, sy, color);
+      put_sample(sx, sy, color);
     }
   } else {
     sort_by_y(x0, y0, x1, y1);
@@ -265,7 +289,7 @@ void SoftwareRendererImp::rasterize_line_DDA(
          sy <= to; x += k, ++sy) {
       sx = int(floor(x));
       if (!valid_sx(sx)) continue;
-      put_pixel(sx, sy, color);
+      put_sample(sx, sy, color);
     }
   }
 }
@@ -282,7 +306,7 @@ void SoftwareRendererImp::rasterize_line_midpoint(
              a2pb2 = a2 + b2,
              a2mb2 = a2 - b2;
          sx <= to; ++sx) {
-      if (valid_sy(sy)) put_pixel(sx, sy, color);
+      if (valid_sy(sy)) put_sample(sx, sy, color);
       if ((d < 0) ^ (a <= 0))
         d += a2;
       else if (d < 0) {
@@ -303,7 +327,7 @@ void SoftwareRendererImp::rasterize_line_midpoint(
              a2pb2 = a2 + b2,
              a2mb2 = a2 - b2;
          sy <= to; ++sy) {
-      if (valid_sx(sx)) put_pixel(sx, sy, color);
+      if (valid_sx(sx)) put_sample(sx, sy, color);
       if ((d < 0) ^ (a <= 0))
         d += a2;
       else if (d < 0) {
@@ -325,7 +349,7 @@ void SoftwareRendererImp::rasterize_line_bresenham(
     int e_dx2 = dy > 0 ? -dx : dx;
     auto [sx, to] = truncated_x_range(x0, x1);
     for (int sy = i_floor(y0), dy2 = 2 * dy, dx2 = 2 * dx; sx <= to; ++sx) {
-      if (valid_sy(sy)) put_pixel(sx, sy, color);
+      if (valid_sy(sy)) put_sample(sx, sy, color);
       e_dx2 += dy2;
       if (dy < 0 && e_dx2 < 0) {
         --sy;
@@ -341,7 +365,7 @@ void SoftwareRendererImp::rasterize_line_bresenham(
     int e_dy2 = dx > 0 ? -dy : dy;
     auto [sy, to] = truncated_y_range(y0, y1);
     for (int sx = i_floor(x0), dy2 = 2 * dy, dx2 = 2 * dx; sy <= to; ++sy) {
-      if (valid_sx(sx)) put_pixel(sx, sy, color);
+      if (valid_sx(sx)) put_sample(sx, sy, color);
       e_dy2 += dx2;
       if (dx < 0 && e_dy2 < 0) {
         --sx;
@@ -361,6 +385,12 @@ void SoftwareRendererImp::rasterize_triangle(float x0, float y0,
   // Task 3: 
   // Implement triangle rasterization
 
+  x0 *= float(sample_rate);
+  y0 *= float(sample_rate);
+  x1 *= float(sample_rate);
+  y1 *= float(sample_rate);
+  x2 *= float(sample_rate);
+  y2 *= float(sample_rate);
   // make sure (x0,y0) is the top
   if (y1 > y0 && y1 > y2) {
     swap(x0, x1);
@@ -372,10 +402,10 @@ void SoftwareRendererImp::rasterize_triangle(float x0, float y0,
 
   // make sure (x0,y0) is the only top
   if (y0 == y1) {
-    rasterize_triangle_with_horizontal_base(x2, y2, x0, x1, y0, color);
+    rasterize_triangle(x2, y2, x0, x1, y0, color);
     return;
   } else if (y0 == y2) {
-    rasterize_triangle_with_horizontal_base(x1, y1, x0, x2, y0, color);
+    rasterize_triangle(x1, y1, x0, x2, y0, color);
     return;
   }
 
@@ -387,86 +417,38 @@ void SoftwareRendererImp::rasterize_triangle(float x0, float y0,
 
   // horizontally cut into two parts - upper and lower
   if (y1 == y2) {
-    rasterize_triangle_with_horizontal_base(x0, y0, x1, x2, y1, color);
+    rasterize_triangle(x0, y0, x1, x2, y1, color);
   } else if (y1 < y2) {
     float x = (x1 - x0) / (y1 - y0) * (y2 - y0) + x0;
-    rasterize_triangle_with_horizontal_base(x0, y0, x, x2, y2, color);
-    rasterize_triangle_with_horizontal_base(x1, y1, x, x2, y2, color);
+    rasterize_triangle(x0, y0, x, x2, y2, color);
+    rasterize_triangle(x1, y1, x, x2, y2, color);
   } else {
     float x = (x2 - x0) / (y2 - y0) * (y1 - y0) + x0;
-    rasterize_triangle_with_horizontal_base(x0, y0, x1, x, y1, color);
-    rasterize_triangle_with_horizontal_base(x2, y2, x1, x, y1, color);
+    rasterize_triangle(x0, y0, x1, x, y1, color);
+    rasterize_triangle(x2, y2, x1, x, y1, color);
   }
 }
 
-void SoftwareRendererImp::rasterize_triangle_with_horizontal_base(
+void SoftwareRendererImp::rasterize_triangle(
     float xTip, float yTip,
     float xBase0, float xBase1, float yBase,
     const Color &color
 ) {
   if (xBase0 > xBase1)
     swap(xBase0, xBase1);
-  // Brute force now:
   float kl = (xBase0 - xTip) / (yBase - yTip);
   float bl = xTip - kl * yTip;
   float kr = (xBase1 - xTip) / (yBase - yTip);
   float br = xTip - kr * yTip;
   if (yBase > yTip) swap(yBase, yTip);
   int y_from = max(0, i_floor(yBase + 0.5f));
-  int y_to = min(int(target_h) - 1, i_floor(yTip - 0.5f));
+  int y_to = min(int(sample_h) - 1, i_floor(yTip - 0.5f));
   int x_from, x_to;
   for (int sy = y_from, sx; sy <= y_to; ++sy) {
     x_from = max(0, i_floor(kl * (0.5f + float(sy)) + bl + 0.5f));
-    x_to = min(int(target_w) - 1, i_floor(kr * (0.5f + float(sy)) + br - 0.5f));
+    x_to = min(int(sample_w) - 1, i_floor(kr * (0.5f + float(sy)) + br - 0.5f));
     for (sx = x_from; sx <= x_to; ++sx)
-      put_pixel(sx, sy, color);
-  }
-
-  // Finer categories:
-  /*
-  if (xBase0 < xTip && xTip < xBase1) { // Acute Triangle
-    if (yTip > yBase) {
-      rasterize_orthogonal_triangle(xBase0, yBase, xTip, yTip, color);
-      rasterize_orthogonal_triangle(xTip, yTip, xBase1, yBase, color);
-    } else {
-      rasterize_orthogonal_triangle(xTip, yTip, xBase0, yBase, color);
-      rasterize_orthogonal_triangle(xBase1, yBase, xTip, yTip, color);
-    }
-    return;
-  } else if (xBase0 == xTip) { // Right Triangle (corner at (x0,yBase))
-    if (yTip > yBase)
-      rasterize_orthogonal_triangle(xTip, yTip, xBase1, yBase, color);
-    else
-      rasterize_orthogonal_triangle(xBase1, yBase, xTip, yTip, color);
-    return;
-  } else if (xBase1 == xTip) { // Right Triangle (corner at (x1,yBase))
-    if (yTip > yBase)
-      rasterize_orthogonal_triangle(xBase0, yBase, xTip, yTip, color);
-    else
-      rasterize_orthogonal_triangle(xTip, yTip, xBase0, yBase, color);
-    return;
-  } else { // Obtuse Triangle
-    // TODO: handle the case of obtuse triangle
-    rasterize_line(xTip, yTip, xBase0, yBase, Color::Blue);
-    rasterize_line(xTip, yTip, xBase1, yBase, Color::Blue);
-    rasterize_line(xBase0, yBase, xBase1, yBase, Color::Blue);
-  }
-   */
-}
-
-// area is on the right of hypotenuse vector (x1-x0, y1-y0)
-void SoftwareRendererImp::rasterize_orthogonal_triangle(
-    float x0, float y0, float x1, float y1, const Color &color
-) {
-  rasterize_line(x0, y0, x1, y1, color);
-  if ((x1 > x0) == (y0 > y1)) { // (x0, y1) is the right angle
-    // TODO
-    rasterize_line(x0, y0, x0, y1, color);
-    rasterize_line(x1, y1, x0, y1, color);
-  } else { // (x1,y0) is the right angle
-    // TODO
-    rasterize_line(x0, y0, x1, y0, color);
-    rasterize_line(x1, y1, x1, y0, color);
+      put_sample(sx, sy, color);
   }
 }
 
@@ -479,12 +461,28 @@ void SoftwareRendererImp::rasterize_image(float x0, float y0,
 }
 
 // resolve samples to render target
-void SoftwareRendererImp::resolve(void) {
+void SoftwareRendererImp::resolve() {
 
-  // Task 4: 
+  // Task 4:
   // Implement supersampling
   // You may also need to modify other functions marked with "Task 4".
-  return;
+  int r, g, b, a;
+  size_t base;
+  size_t sample_squared = sample_rate * sample_rate;
+  for (int sy = 0; sy < target_h; ++sy)
+    for (int sx = 0; sx < target_w; ++sx) {
+      r = g = b = a = 0;
+      for (int i = 0; i < sample_squared; ++i) {
+        base = 4 * (
+            (sy * sample_rate + i / sample_rate) * sample_w + (sx * sample_rate + i % sample_rate)
+        );
+        r += sample_buffer[base];
+        g += sample_buffer[base + 1];
+        b += sample_buffer[base + 2];
+        a += sample_buffer[base + 3];
+      }
+      put_pixel(sx, sy, r / sample_squared, g / sample_squared, b / sample_squared, a / sample_squared);
+    }
 
 }
 
