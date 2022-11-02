@@ -30,6 +30,8 @@ void SoftwareRendererImp::draw_svg(SVG &svg) {
   while (!transforms.empty()) transforms.pop();
   transforms.push(transformation);
 
+  update_sample_buffer();
+
   // draw all elements
   for (size_t i = 0; i < svg.elements.size(); ++i) {
     draw_element(svg.elements[i]);
