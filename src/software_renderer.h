@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <vector>
+#include <stack>
 #include <functional>
 
 #include "CMU462.h"
@@ -89,6 +90,13 @@ class SoftwareRendererImp : public SoftwareRenderer {
   size_t sample_w;
   size_t sample_h;
   void update_sample_buffer();
+
+  // transformation
+  std::stack<Matrix3x3> transforms;
+
+  inline Vector2D transformRelatively(const Vector2D &p) {
+    return transform(transforms.top(), p);
+  }
 
   // Primitive Drawing //
 

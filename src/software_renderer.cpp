@@ -27,6 +27,8 @@ void SoftwareRendererImp::draw_svg(SVG &svg) {
 
   // set top level transformation
   transformation = svg_2_screen;
+  while (!transforms.empty()) transforms.pop();
+  transforms.push(transformation);
 
   // draw all elements
   for (size_t i = 0; i < svg.elements.size(); ++i) {
@@ -34,13 +36,13 @@ void SoftwareRendererImp::draw_svg(SVG &svg) {
   }
 
   // draw canvas outline
-  Vector2D a = transform(Vector2D(0, 0));
+  Vector2D a = transformRelatively(Vector2D(0, 0));
   a.x--;
   a.y--;
-  Vector2D b = transform(Vector2D(svg.width, 0));
+  Vector2D b = transformRelatively(Vector2D(svg.width, 0));
   b.x++;
   b.y--;
-  Vector2D c = transform(Vector2D(0, svg.height));
+  Vector2D c = transformRelatively(Vector2D(0, svg.height));
   c.x--;
   c.y++;
   Vector2D d = transform(Vector2D(svg.width, svg.height));
@@ -51,6 +53,8 @@ void SoftwareRendererImp::draw_svg(SVG &svg) {
   rasterize_line(a.x, a.y, c.x, c.y, Color::Black);
   rasterize_line(d.x, d.y, b.x, b.y, Color::Black);
   rasterize_line(d.x, d.y, c.x, c.y, Color::Black);
+
+  transforms.pop();
 
   // resolve and send to render target
   resolve();
@@ -89,7 +93,7 @@ void SoftwareRendererImp::draw_element(SVGElement *element) {
 
   // Task 5 (part 1):
   // Modify this to implement the transformation stack
-
+  transforms.push(transforms.top() * element->transform);
   switch (element->type) {
     case POINT:draw_point(static_cast<Point &>(*element));
       break;
@@ -109,6 +113,7 @@ void SoftwareRendererImp::draw_element(SVGElement *element) {
       break;
     default:break;
   }
+  transforms.pop();
 
 }
 
@@ -117,15 +122,15 @@ void SoftwareRendererImp::draw_element(SVGElement *element) {
 
 void SoftwareRendererImp::draw_point(Point &point) {
 
-  Vector2D p = transform(point.position);
+  Vector2D p = transformRelatively(point.position);
   rasterize_point(p.x, p.y, point.style.fillColor);
 
 }
 
 void SoftwareRendererImp::draw_line(Line &line) {
 
-  Vector2D p0 = transform(line.from);
-  Vector2D p1 = transform(line.to);
+  Vector2D p0 = transformRelatively(line.from);
+  Vector2D p1 = transformRelatively(line.to);
   rasterize_line(p0.x, p0.y, p1.x, p1.y, line.style.strokeColor);
 
 }
@@ -137,8 +142,8 @@ void SoftwareRendererImp::draw_polyline(Polyline &polyline) {
   if (c.a != 0) {
     int nPoints = polyline.points.size();
     for (int i = 0; i < nPoints - 1; i++) {
-      Vector2D p0 = transform(polyline.points[(i + 0) % nPoints]);
-      Vector2D p1 = transform(polyline.points[(i + 1) % nPoints]);
+      Vector2D p0 = transformRelatively(polyline.points[(i + 0) % nPoints]);
+      Vector2D p1 = transformRelatively(polyline.points[(i + 1) % nPoints]);
       rasterize_line(p0.x, p0.y, p1.x, p1.y, c);
     }
   }
@@ -154,10 +159,10 @@ void SoftwareRendererImp::draw_rect(Rect &rect) {
   float w = rect.dimension.x;
   float h = rect.dimension.y;
 
-  Vector2D p0 = transform(Vector2D(x, y));
-  Vector2D p1 = transform(Vector2D(x + w, y));
-  Vector2D p2 = transform(Vector2D(x, y + h));
-  Vector2D p3 = transform(Vector2D(x + w, y + h));
+  Vector2D p0 = transformRelatively(Vector2D(x, y));
+  Vector2D p1 = transformRelatively(Vector2D(x + w, y));
+  Vector2D p2 = transformRelatively(Vector2D(x, y + h));
+  Vector2D p3 = transformRelatively(Vector2D(x + w, y + h));
 
   // draw fill
   c = rect.style.fillColor;
@@ -191,9 +196,9 @@ void SoftwareRendererImp::draw_polygon(Polygon &polygon) {
 
     // draw as triangles
     for (size_t i = 0; i < triangles.size(); i += 3) {
-      Vector2D p0 = transform(triangles[i + 0]);
-      Vector2D p1 = transform(triangles[i + 1]);
-      Vector2D p2 = transform(triangles[i + 2]);
+      Vector2D p0 = transformRelatively(triangles[i + 0]);
+      Vector2D p1 = transformRelatively(triangles[i + 1]);
+      Vector2D p2 = transformRelatively(triangles[i + 2]);
       rasterize_triangle(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, c);
     }
   }
@@ -203,8 +208,8 @@ void SoftwareRendererImp::draw_polygon(Polygon &polygon) {
   if (c.a != 0) {
     int nPoints = polygon.points.size();
     for (int i = 0; i < nPoints; i++) {
-      Vector2D p0 = transform(polygon.points[(i + 0) % nPoints]);
-      Vector2D p1 = transform(polygon.points[(i + 1) % nPoints]);
+      Vector2D p0 = transformRelatively(polygon.points[(i + 0) % nPoints]);
+      Vector2D p1 = transformRelatively(polygon.points[(i + 1) % nPoints]);
       rasterize_line(p0.x, p0.y, p1.x, p1.y, c);
     }
   }
@@ -218,8 +223,8 @@ void SoftwareRendererImp::draw_ellipse(Ellipse &ellipse) {
 
 void SoftwareRendererImp::draw_image(Image &image) {
 
-  Vector2D p0 = transform(image.position);
-  Vector2D p1 = transform(image.position + image.dimension);
+  Vector2D p0 = transformRelatively(image.position);
+  Vector2D p1 = transformRelatively(image.position + image.dimension);
 
   rasterize_image(p0.x, p0.y, p1.x, p1.y, image.tex);
 }

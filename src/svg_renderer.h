@@ -10,40 +10,41 @@
 namespace CMU462 {
 
 class SVGRenderer {
- public: 
+ public:
 
-  SVGRenderer() : transformation ( Matrix3x3::identity() ) { }
+  SVGRenderer() : transformation(Matrix3x3::identity()) {}
 
   // Free used resources
-  virtual ~SVGRenderer() { }
+  virtual ~SVGRenderer() {}
 
   // Draw an svg file
-  virtual void draw_svg( SVG& svg ) = 0;
+  virtual void draw_svg(SVG &svg) = 0;
 
   // Set viewport
-  inline void set_viewport( Viewport* viewport ) {
+  inline void set_viewport(Viewport *viewport) {
     this->viewport = viewport;
   }
 
  protected:
 
   // Viewport
-  Viewport* viewport;
+  Viewport *viewport;
 
   // Projective space transformation
   Matrix3x3 transformation;
 
   // Transform object coordinate to screen coordinate
-  inline Vector2D transform( Vector2D p ) {
- 
+  inline Vector2D transform(const Vector2D &p) {
+    return transform(transformation, p);
+  }
+
+  static inline Vector2D transform(const Matrix3x3 &t, const Vector2D &p) {
     // map point from 2D Euclidean plane to 3D projective space
-    Vector3D u( p.x, p.y, 1.0 );
-
+    Vector3D u(p.x, p.y, 1.0);
     // apply projective space transformation
-    u = transformation * u; 
-
+    u = t * u;
     // project back to 2D Euclidean plane
-    return Vector2D(u.x / u.z, u.y / u.z);
+    return {u.x / u.z, u.y / u.z};
   }
 
 };
