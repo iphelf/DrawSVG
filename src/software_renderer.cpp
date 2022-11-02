@@ -82,7 +82,7 @@ void SoftwareRendererImp::update_sample_buffer() {
   if (!this->render_target) return;
   this->sample_h = this->target_h * this->sample_rate;
   this->sample_w = this->target_w * this->sample_rate;
-  this->sample_buffer.assign(this->sample_h * this->sample_w * 4, 0);
+  this->sample_buffer.assign(this->sample_h * this->sample_w * 4, 255);
 }
 
 void SoftwareRendererImp::draw_element(SVGElement *element) {
