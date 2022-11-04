@@ -107,9 +107,19 @@ Color Sampler2DImp::sample_bilinear(Texture &tex,
                                     int level) {
 
   // Task 6: Implement bilinear filtering
-
-  // return magenta for invalid level
-  return Color(1, 0, 1, 1);
+  u *= float(tex.width);
+  v *= float(tex.height);
+  if (0 > u || u >= tex.width || 0 > v || v >= tex.height)
+    return Color(1, 0, 1, 1);
+  int tu = floor(u - 0.5);
+  int tv = floor(v - 0.5);
+  auto cTL = tex.valid(tu, tv) ? tex.mipmap[0].color(tu, tv) : Color::Black;
+  auto cTR = tex.valid(tu, tv + 1) ? tex.mipmap[0].color(tu, tv + 1) : Color::Black;
+  auto cBL = tex.valid(tu + 1, tv) ? tex.mipmap[0].color(tu + 1, tv) : Color::Black;
+  auto cBR = tex.valid(tu + 1, tv + 1) ? tex.mipmap[0].color(tu + 1, tv + 1) : Color::Black;
+  float s = u - float(tu) - 0.5f;
+  float t = v - float(tv) - 0.5f;
+  return (cTL * (1 - t) + cTR * t) * (1 - s) + (cBL * (1 - t) + cBR * t) * s;
 
 }
 
@@ -122,6 +132,16 @@ Color Sampler2DImp::sample_trilinear(Texture &tex,
   // return magenta for invalid level
   return Color(1, 0, 1, 1);
 
+}
+
+Color MipLevel::color(size_t tu, size_t tv) {
+  size_t base = 4 * (tu * width + tv);
+  return Color(
+      texels[base] / 255.0f,
+      texels[base + 1] / 255.0f,
+      texels[base + 2] / 255.0f,
+      texels[base + 3] / 255.0f
+  );
 }
 
 } // namespace CMU462

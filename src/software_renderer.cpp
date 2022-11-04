@@ -471,11 +471,9 @@ void SoftwareRendererImp::rasterize_image(float x0, float y0,
     v = (float(sy) + 0.5f - y0) / (y1 - y0);
     for (int sx = sx_from; sx <= sx_to; ++sx) {
       u = (float(sx) + 0.5f - x0) / (x1 - x0);
-      put_sample(sx, sy, sampler->sample_nearest(tex, u, v));
+      put_sample(sx, sy, sampler->sample_bilinear(tex, u, v));
     }
   }
-  // (x0, y0): top left
-  // (x1, y1): bottom right
 
 }
 
