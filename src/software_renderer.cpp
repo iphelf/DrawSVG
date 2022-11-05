@@ -467,11 +467,15 @@ void SoftwareRendererImp::rasterize_image(float x0, float y0,
   float u, v;
   auto [sy_from, sy_to] = truncated_y_range(y0 + 0.49999f, y1 - 0.5f);
   auto [sx_from, sx_to] = truncated_x_range(x0 + 0.49999f, x1 - 0.5f);
+  const float u_scale = (x1 - x0) / float(tex.width);
+  const float v_scale = (y1 - y0) / float(tex.height);
   for (int sy = sy_from; sy <= sy_to; ++sy) {
     v = (float(sy) + 0.5f - y0) / (y1 - y0);
     for (int sx = sx_from; sx <= sx_to; ++sx) {
       u = (float(sx) + 0.5f - x0) / (x1 - x0);
-      put_sample(sx, sy, sampler->sample_bilinear(tex, u, v));
+//      put_sample(sx, sy, sampler->sample_nearest(tex, u, v));
+//      put_sample(sx, sy, sampler->sample_bilinear(tex, u, v));
+      put_sample(sx, sy, sampler->sample_trilinear(tex, u, v, u_scale, v_scale));
     }
   }
 

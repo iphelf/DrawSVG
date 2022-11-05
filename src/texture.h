@@ -19,6 +19,9 @@ struct MipLevel {
   size_t height;
   std::vector<unsigned char> texels;
   Color color(size_t tu, size_t tv);
+  [[nodiscard]] inline bool valid(int tu, int tv) const {
+    return 0 <= tu && tu < height && 0 <= tv && tv < width;
+  }
 };
 
 struct Texture {
