@@ -112,12 +112,20 @@ class Color {
    */
   std::string toHex() const;
 
-  inline void render(unsigned char *dst) {
+  inline void render(unsigned char *dst) const {
     auto *dst_uint8 = (uint8_t *) dst;
     dst_uint8[0] = (uint8_t) (255.f * std::max(0.0f, std::min(1.0f, r)));
     dst_uint8[1] = (uint8_t) (255.f * std::max(0.0f, std::min(1.0f, g)));
     dst_uint8[2] = (uint8_t) (255.f * std::max(0.0f, std::min(1.0f, b)));
     dst_uint8[3] = (uint8_t) (255.f * std::max(0.0f, std::min(1.0f, a)));
+  }
+
+  [[nodiscard]] inline Color over(const Color &base) const {
+    return *this + base * (1.0f - a);
+  }
+
+  [[nodiscard]] inline Color premultiplied() const {
+    return {r * a, g * a, b * a, a};
   }
 
 }; // class Color

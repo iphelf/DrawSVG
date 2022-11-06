@@ -86,7 +86,7 @@ class SoftwareRendererImp : public SoftwareRenderer {
  private:
 
   // supersampling
-  std::vector<u_int8_t> sample_buffer;
+  std::vector<Color> sample_buffer;
   size_t sample_w;
   size_t sample_h;
   void update_sample_buffer();
@@ -200,32 +200,19 @@ class SoftwareRendererImp : public SoftwareRenderer {
     render_target[base + 3] = a;
   }
 
-  inline void put_pixel(int sx, int sy, const Color &color) {
+  inline void put_pixel(int sx, int sy, const Color &pm_color) {
     put_pixel(
         sx, sy,
-        static_cast<uint8_t>(color.r * 255),
-        static_cast<uint8_t>(color.g * 255),
-        static_cast<uint8_t>(color.b * 255),
-        static_cast<uint8_t>(color.a * 255)
+        static_cast<uint8_t>(pm_color.r / pm_color.a * 255),
+        static_cast<uint8_t>(pm_color.g / pm_color.a * 255),
+        static_cast<uint8_t>(pm_color.b / pm_color.a * 255),
+        static_cast<uint8_t>(255)
     );
-  }
-
-  inline void put_sample(int sx, int sy, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    auto base = 4 * (sx + sy * sample_w);
-    sample_buffer[base] = r;
-    sample_buffer[base + 1] = g;
-    sample_buffer[base + 2] = b;
-    sample_buffer[base + 3] = a;
   }
 
   inline void put_sample(int sx, int sy, const Color &color) {
-    put_sample(
-        sx, sy,
-        static_cast<uint8_t>(color.r * 255),
-        static_cast<uint8_t>(color.g * 255),
-        static_cast<uint8_t>(color.b * 255),
-        static_cast<uint8_t>(color.a * 255)
-    );
+    auto &base = sample_buffer[sx + sy * sample_w];
+    base = color.premultiplied().over(base);
   }
 
   // determine axis to move along

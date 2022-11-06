@@ -88,7 +88,7 @@ void SoftwareRendererImp::update_sample_buffer() {
   if (!this->render_target) return;
   this->sample_h = this->target_h * this->sample_rate;
   this->sample_w = this->target_w * this->sample_rate;
-  this->sample_buffer.assign(this->sample_h * this->sample_w * 4, 255);
+  this->sample_buffer.assign(this->sample_h * this->sample_w, Color(1, 1, 1, 1));
 }
 
 void SoftwareRendererImp::draw_element(SVGElement *element) {
@@ -487,22 +487,18 @@ void SoftwareRendererImp::resolve() {
   // Task 4:
   // Implement supersampling
   // You may also need to modify other functions marked with "Task 4".
-  int r, g, b, a;
-  size_t base;
+  Color c;
   size_t sample_squared = sample_rate * sample_rate;
+  float sample_squared_inverse = 1.0f / float(sample_squared);
   for (int sy = 0; sy < target_h; ++sy)
     for (int sx = 0; sx < target_w; ++sx) {
-      r = g = b = a = 0;
-      for (int i = 0; i < sample_squared; ++i) {
-        base = 4 * (
-            (sy * sample_rate + i / sample_rate) * sample_w + (sx * sample_rate + i % sample_rate)
-        );
-        r += sample_buffer[base];
-        g += sample_buffer[base + 1];
-        b += sample_buffer[base + 2];
-        a += sample_buffer[base + 3];
-      }
-      put_pixel(sx, sy, r / sample_squared, g / sample_squared, b / sample_squared, a / sample_squared);
+      c.r = c.g = c.b = c.a = 0;
+      for (int i = 0; i < sample_squared; ++i)
+        c += sample_buffer[
+            (sy * sample_rate + i / sample_rate) * sample_w
+                + (sx * sample_rate + i % sample_rate)
+        ] * sample_squared_inverse;
+      put_pixel(sx, sy, c);
     }
 
 }
